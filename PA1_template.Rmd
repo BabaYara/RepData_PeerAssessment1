@@ -1,20 +1,113 @@
-# Reproducible Research: Peer Assessment 1
+Title
+========================================================
+
+The data for this project comes from a personal activity monitoring device. I first load the data from an online backup and proceed to preprocess it for analysis.I first remove the NA values and reclassifiy the date column as an R date object. I create an extra variable called Weekdays to help make the analysis simple. 
+```{r}
+if(!file.exists("./data")){dir.create("./data")}
+fileurl = "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+download.file(fileurl, destfile = "./data/data.zip")
+data = unzip("./data/data.zip")
+data = read.csv(data, header = T)
+
+data$date = as.Date(data$date)
+data$weekdays = as.factor(weekdays(data$date))
+mydata = na.omit(data)
+```
+### Histogram of Steps taken each day
+```{r}
+sums = data.frame(sums = with(mydata, tapply(steps, date, sum)))
+barplot(sums$sums, space = F,
+        ylab = "Number of steps per day",
+        main = "Histogram of Steps taken each day")
+```
+The mean and median steps taken each day are listed below.
+```{r}
+Means = with(mydata, tapply(steps, date, mean))
+Medians = with(mydata, tapply(steps, date, median))
+```
+```{r}
+Means
+Medians
+```
 
 
-## Loading and preprocessing the data
+This is a time series plot of the 5-minute interval and the average number of steps taken, averaged across all days.
+```{r}
+Interval = data.frame(Average = with(mydata, tapply(steps, as.factor(interval), mean)))
+plot(Interval, type = "l",
+     xlab = "5 minute Intervals",
+     ylab = "Average number of steps taken",
+     main = "Time Series Plot of the average steps taken per interval")
+```
+There are a total of 2304 cases with missing data.
+```{r}
+n = nrow(data) - nrow(mydata)
+n
+```
 
+I use the averages per day to fill in the missing values. So for days where no data was recorded, I put in 0.
+```{r}
+Means = with(mydata, tapply(steps, date, mean))
+for(i in 1:nrow(data)){
+    if(is.na(data[i, 1])){
+        date = data[i, 2]
+        data[i, 1] = Means[date]
+    }
+    if(is.na(data[i, 1])){
+        data[i, 1] = 0
+    }
+}
+```
+This new dataset has missing values filled in using averages for that day.
+```{r}
+head(data, n = 10)
+tail(data, n = 10)
+```
 
+### Histogram of Steps taken per day of the week
+```{r}
+sums = data.frame(sums = with(data, tapply(steps, weekdays, sum)))
+barplot(sums$sums, space = F,
+        ylab = "Number of steps per day")
+```
+The mean and median steps taken each day are listed below.
+```{r}
+Means = with(data, tapply(steps, date, mean))
+Medians = with(data, tapply(steps, date, median))
+```
+```{r}
+Means
+Medians
+```
+I created a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.I then used this factor variable to create the plot below.
+```{r}
+data$week = NA
+data$weekdays = as.character(data$weekdays)
+for(i in 1:nrow(data)){
+    if(data[i,4] == "Monday"){data[i,5] = "weekday"}
+    if(data[i,4] == "Tuesday"){data[i,5] = "weekday"}
+    if(data[i,4] == "Wednesday"){data[i,5] = "weekday"}
+    if(data[i,4] == "Thursday"){data[i,5] = "weekday"}
+    if(data[i,4] == "Friday"){data[i,5] = "weekday"}
+    if(data[i,4] == "Saturday"){data[i,5] = "weekend"}
+    if(data[i,4] == "Sunday"){data[i,5] = "weekend"}
+}
 
-## What is mean total number of steps taken per day?
+df1 = subset(data, data$week == "weekend")
+Interval1 = data.frame(Average = with(df1, tapply(steps, as.factor(interval), mean)),
+                       week = "weekend",
+                       interval = names(with(df1, tapply(steps, as.factor(interval), mean))))
+df2 = subset(data, data$week == "weekday")
+Interval2 = data.frame(Average = with(df2, tapply(steps, as.factor(interval), mean)),
+                       week = "weekday",
+                       interval = names(with(df1, tapply(steps, as.factor(interval), mean))))
+df = rbind(Interval1, Interval2)
+library(lattice)
+df$week = as.factor(df$week)
+xyplot(df$Average ~ df$interval | df$week, data = df,
+       type = "l",
+       xlab = "Interval",
+       ylab = "Number of steps",
+       layout=c(1,2))
+```
 
-
-
-## What is the average daily activity pattern?
-
-
-
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
